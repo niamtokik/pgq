@@ -1,10 +1,16 @@
 %%%===================================================================
+%%% @author Mathieu Kerjouan
+%%% @copyright 2023 (c) Mathieu Kerjouan
+%%% @doc
 %%%
+%%% A simple producer interface using `gen_server' with pgq.
+%%%
+%%% @end
 %%%===================================================================
 -module(pgq_producer).
 -behavior(gen_server).
 -export([start/1, start_link/1]).
--export([publish/3]).
+-export([publish/3, queue_info/1]).
 -export([init/1, terminate/2]).
 -export([handle_cast/2, handle_call/3, handle_info/2]).
 -include_lib("kernel/include/logger.hrl").
@@ -25,13 +31,19 @@ start_link(Args) ->
 %%
 %%--------------------------------------------------------------------
 publish(Pid, Type, Content) ->
-    gen_server:cast(Pid, {publish, {Type, Content}}).
+    gen_server:call(Pid, {publish, {Type, Content}}).
+
+%%--------------------------------------------------------------------
+%%
+%%--------------------------------------------------------------------
+queue_info(Pid) ->
+    gen_server:call(Pid, {get, queue, info}).
 
 %%--------------------------------------------------------------------
 %%
 %%--------------------------------------------------------------------
 init(#{ connection := _Connection, queue := _Queue} = Args) ->
-    init_queue(Args);
+    init_extension(Args);
 init(#{ queue := _Queue } = Args) ->
     init_connection(Args).
 
@@ -39,9 +51,17 @@ init(#{ queue := _Queue } = Args) ->
 init_connection(Args) ->
     case epgsql:connect(Args) of
         {ok, Connection} ->
-            init_queue(Args#{ connection => Connection });
+            init_extension(Args#{ connection => Connection });
         Elsewise ->
             Elsewise
+    end.
+
+% @hidden
+init_extension(#{ connection := Connection } = Args) ->
+    case pgq_low:is_installed(Connection) of
+        true -> 
+            init_queue(Args);
+        false -> {error, pgq_not_installed}
     end.
 
 % @hidden
@@ -69,25 +89,35 @@ terminate(_,_) ->
 %%--------------------------------------------------------------------
 %%
 %%--------------------------------------------------------------------
-handle_cast({publish, Events}, State) 
-  when is_list(Events) ->
-    Fun = fun (Event) -> publish_event(Event, State) end,
-    lists:map(Fun, Events);
-handle_cast({publish, {Type, Value}}, State) ->
-    publish_event({Type, Value}, State),
-    {noreply, State}.
+handle_call({get, queue, info}, _From, #{ queue := Queue } = State) ->
+    Connection = maps:get(connection, State),
+    Queue = maps:get(queue, State),
+    case pgq_low:get_queue_info(Connection, Queue) of
+        {ok, Info} -> 
+            {reply, Info, State};
+        Elsewise ->
+            {reply, Elsewise, State}
+    end;
+handle_call({publish, {Type, Value}}, _From, State) ->
+    try publish_event({Type, Value}, State) of
+        Return -> 
+            {reply, Return, State}
+    catch
+        E:R:_ ->
+            {reply, {error, {E, R}}, State}
+    end.
     
 %%--------------------------------------------------------------------
 %%
 %%--------------------------------------------------------------------
-handle_call(_,_,State) ->
-    {stop, undefined, State}.
+handle_cast(_,State) ->
+    {noreply, State}.
 
 %%--------------------------------------------------------------------
 %%
 %%--------------------------------------------------------------------
 handle_info(_,State) ->
-    {stop, undefined, State}.
+    {noreply, State}.
 
 %%--------------------------------------------------------------------
 %%
