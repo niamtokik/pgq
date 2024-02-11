@@ -12,6 +12,7 @@
 %%% @end
 %%%===================================================================
 -module(pgq_low).
+-export([equery/3]).
 -export([is_installed/1, version/1, version_all/1]).
 % queue management
 -export([create_queue/2, drop_queue/2, drop_queue/3, set_queue_config/4]).
@@ -39,16 +40,20 @@
 -include_lib("kernel/include/logger.hrl").
 
 %%--------------------------------------------------------------------
-%%
+%% type definition.
 %%--------------------------------------------------------------------
--type connection() :: epgsql:connection().
--type queue_name() :: binary() | string().
+-type connection()    :: epgsql:connection().
+-type queue_name()    :: binary() | string().
 -type consumer_name() :: binary() | string().
--type event_type() :: binary() | string().
--type event_data() :: binary() | string().
+-type event_type()    :: binary() | string().
+-type event_data()    :: binary() | string().
+-type tick_id()       :: integer().
 
 %%--------------------------------------------------------------------
 %% @hidden
+%% @doc
+%% An internal wrapper to print debug logs.
+%% @end
 %%--------------------------------------------------------------------
 equery(Connection, Query, QueryArgs) ->
     QueryId = erlang:unique_integer(),
@@ -67,12 +72,12 @@ equery(Connection, Query, QueryArgs) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%%
+%% Check if pgq was installed on the database side.
 %% @end
 %%--------------------------------------------------------------------
 -spec is_installed(Connection) -> Return when
       Connection :: connection(),
-      Return :: boolean().
+      Return     :: boolean().
 
 is_installed(Connection) ->
     case version(Connection) of
@@ -82,13 +87,15 @@ is_installed(Connection) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% https://pgq.github.io/extension/pgq/files/external-sql.html#pgq.version(0)
+%% Returns the version used by pgq.
+%%
+%% see: https://pgq.github.io/extension/pgq/files/external-sql.html#pgq.version(0)
 %% @end
 %%--------------------------------------------------------------------
 -spec version(Connection) -> Return when
       Connection :: connection(),
-      Return :: {ok, binary()}
-              | {error, term()}.
+      Return     :: {ok, binary()}
+                  | {error, term()}.
 
 version(Connection) ->
     Query = "SELECT pgq.version();",
@@ -112,14 +119,16 @@ version_all(Connection) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% https://pgq.github.io/extension/pgq/files/external-sql.html#pgq.create_queue(1)
+%% Creates a new queue.
+%%
+%% see: https://pgq.github.io/extension/pgq/files/external-sql.html#pgq.create_queue(1)
 %% @end
 %%--------------------------------------------------------------------
 -spec create_queue(Connection, QueueName) -> Return when
       Connection :: connection(),
-      QueueName :: queue_name(),
-      Return :: {ok, integer()}
-              | {error, term()}.
+      QueueName  :: queue_name(),
+      Return     :: {ok, integer()}
+                  | {error, term()}.
 
 create_queue(Connection, QueueName) ->
     Query = "SELECT pgq.create_queue($1::text);",
@@ -134,14 +143,16 @@ create_queue(Connection, QueueName) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% https://pgq.github.io/extension/pgq/files/external-sql.html#pgq.drop_queue(1)
+%% Removes a queue.
+%%
+%% see: https://pgq.github.io/extension/pgq/files/external-sql.html#pgq.drop_queue(1)
 %% @end
 %%--------------------------------------------------------------------
 -spec drop_queue(Connection, QueueName) -> Return when
       Connection :: connection(),
-      QueueName :: queue_name(),
-      Return :: {ok, integer()}
-              | {error, term()}.
+      QueueName  :: queue_name(),
+      Return     :: {ok, integer()}
+                  | {error, term()}.
 
 drop_queue(Connection, QueueName) ->
     Query = "SELECT pgq.drop_queue($1::text);",
@@ -156,15 +167,17 @@ drop_queue(Connection, QueueName) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% https://pgq.github.io/extension/pgq/files/external-sql.html#pgq.drop_queue(2)
+%% Removes a queue.
+%%
+%% see: https://pgq.github.io/extension/pgq/files/external-sql.html#pgq.drop_queue(2)
 %% @end
 %%--------------------------------------------------------------------
 -spec drop_queue(Connection, QueueName, Force) -> Return when
       Connection :: connection(),
-      QueueName :: queue_name(),
-      Force :: boolean(),
-      Return :: {ok, integer()}
-              | {error, term()}.
+      QueueName  :: queue_name(),
+      Force      :: boolean(),
+      Return     :: {ok, integer()}
+                  | {error, term()}.
 
 drop_queue(Connection, QueueName, Force) ->
     Query = "SELECT pgq.drop_queue($1::text, $2::boolean);",
@@ -179,15 +192,17 @@ drop_queue(Connection, QueueName, Force) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% https://pgq.github.io/extension/pgq/files/external-sql.html#pgq.set_queue_config(3)
+%% Configures a queue.
+%%
+%% see: https://pgq.github.io/extension/pgq/files/external-sql.html#pgq.set_queue_config(3)
 %% @end
 %%--------------------------------------------------------------------
 -spec set_queue_config(Connection, QueueName, ParamName, ParamValue) -> Return when
       Connection :: connection(),
-      QueueName :: queue_name(),
-      ParamName :: binary() | string(),
+      QueueName  :: queue_name(),
+      ParamName  :: binary() | string(),
       ParamValue :: binary() | string(),
-      Return :: any().
+      Return     :: any().
 
 set_queue_config(Connection, QueueName, ParamName, ParamValue) ->
     Query = "SELECT pgq.set_queue_config($1::text, $2::text, $3::text);",
@@ -196,16 +211,18 @@ set_queue_config(Connection, QueueName, ParamName, ParamValue) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% https://pgq.github.io/extension/pgq/files/external-sql.html#pgq.insert_event(3)
+%% Inserts a new standard event.
+%%
+%% see: https://pgq.github.io/extension/pgq/files/external-sql.html#pgq.insert_event(3)
 %% @end
 %%--------------------------------------------------------------------
 -spec insert_event(Connection, QueueName, EventType, EventData) -> Return when
       Connection :: connection(),
-      QueueName :: queue_name(),
-      EventType :: event_type(),
-      EventData :: event_data(),
-      Return :: {ok, integer()}
-              | {error, term()}.
+      QueueName  :: queue_name(),
+      EventType  :: event_type(),
+      EventData  :: event_data(),
+      Return     :: {ok, integer()}
+                  | {error, term()}.
 
 insert_event(Connection, QueueName, EventType, EventData) ->
     Query = "SELECT pgq.insert_event($1::text, $2::text, $3::text);",
@@ -220,21 +237,23 @@ insert_event(Connection, QueueName, EventType, EventData) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% https://pgq.github.io/extension/pgq/files/external-sql.html#pgq.insert_event(7)
+%% Inserts a new event with extra value.
+%%
+%% see: https://pgq.github.io/extension/pgq/files/external-sql.html#pgq.insert_event(7)
 %% @end
 %%--------------------------------------------------------------------
 -spec insert_event(Connection, QueueName, EventType, EventData, Extra) -> Return when
       Connection :: connection(),
-      QueueName :: queue_name(),
-      EventType :: event_type(),
-      EventData :: event_data(),
-      Extra :: #{ extra1 => event_data() | null
-                , extra2 => event_data() | null
-                , extra3 => event_data() | null
-                , extra4 => event_data() | null
-                },
-      Return :: {ok, integer()}
-              | {error, term()}.
+      QueueName  :: queue_name(),
+      EventType  :: event_type(),
+      EventData  :: event_data(),
+      Extra      :: #{ extra1 => event_data() | null
+                     , extra2 => event_data() | null
+                     , extra3 => event_data() | null
+                     , extra4 => event_data() | null
+                     },
+      Return     :: {ok, integer()}
+                  | {error, term()}.
 
 insert_event(Connection, QueueName, EventType, EventData, Extra) ->
     Extra1 = maps:get(Extra, extra1, null),
@@ -255,25 +274,35 @@ insert_event(Connection, QueueName, EventType, EventData, Extra) ->
 
 %%--------------------------------------------------------------------
 %% @doc
-%% https://pgq.github.io/extension/pgq/files/external-sql.html#pgq.current_event_table(1)
+%% Returns active event table for particular queue.
+%%
+%% see: https://pgq.github.io/extension/pgq/files/external-sql.html#pgq.current_event_table(1)
 %% @end
 %%--------------------------------------------------------------------
 current_event_table(Connection, QueueName) ->
     Query = "SELECT pgq.current_event_table($1::text);",
     QueryArgs = [QueueName],
-    equery(Connection, Query, QueryArgs).
+    Return = equery(Connection, Query, QueryArgs),
+    case Return of
+        {ok, _, [{EventTable}]} ->
+            {ok, EventTable};
+        Elsewise ->
+            Elsewise
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc
-%% https://pgq.github.io/extension/pgq/files/external-sql.html#pgq.register_consumer(2)
+%% Registers a new consumer.
+%%
+%% see: https://pgq.github.io/extension/pgq/files/external-sql.html#pgq.register_consumer(2)
 %% @end
 %%--------------------------------------------------------------------
 -spec register_consumer(Connection, QueueName, ConsumerId) -> Return when
       Connection :: connection(),
-      QueueName :: queue_name(),
+      QueueName  :: queue_name(),
       ConsumerId :: consumer_name(),
-      Return :: {ok, integer()}
-              | {error, term()}.
+      Return     :: {ok, integer()}
+                  | {error, term()}.
 
 register_consumer(Connection, QueueName, ConsumerId) ->
     Query = "SELECT pgq.register_consumer($1::text, $2::text);",
@@ -285,34 +314,49 @@ register_consumer(Connection, QueueName, ConsumerId) ->
         Elsewise ->
             Elsewise
     end.
-            
 
 %%--------------------------------------------------------------------
 %% @doc
-%% https://pgq.github.io/extension/pgq/files/external-sql.html#pgq.register_consumer_at(3)
+%% Register a new consumer using a specific Tick.
+%%
+%% see: https://pgq.github.io/extension/pgq/files/external-sql.html#pgq.register_consumer_at(3)
 %% @end
 %%--------------------------------------------------------------------
 register_consumer_at(Connection, QueueName, ConsumerName, TickPos) ->
     Query = "SELECT pgq.register_consumer($1::text, $2::text, $3::bigint);",
     QueryArgs = [QueueName, ConsumerName, TickPos],
-    _Return = equery(Connection, Query, QueryArgs).
+    Return = equery(Connection, Query, QueryArgs),
+    case Return of 
+        {ok, _, [{Consumer}]} ->
+            {ok, Consumer};
+        Elsewise ->
+            Elsewise
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc
-%% https://pgq.github.io/extension/pgq/files/external-sql.html#pgq.unregister_consumer(2)
+%% Unregisters a consumer.
+%%
+%% see: https://pgq.github.io/extension/pgq/files/external-sql.html#pgq.unregister_consumer(2)
 %% @end
 %%--------------------------------------------------------------------
 -spec unregister_consumer(Connection, QueueName, ConsumerName) -> Return when
-      Connection :: connection(),
-      QueueName :: queue_name(),
+      Connection   :: connection(),
+      QueueName    :: queue_name(),
       ConsumerName :: consumer_name(),
-      Return :: {ok, integer()}
-              | {error, term()}.
+      Return       :: {ok, integer()}
+                    | {error, term()}.
 
 unregister_consumer(Connection, QueueName, ConsumerName) ->
     Query = "SELECT pgq.unregister_consumer($1::text, $2::text);",
     QueryArgs = [QueueName, ConsumerName],
-    _Return = equery(Connection, Query, QueryArgs).
+    Return = equery(Connection, Query, QueryArgs),
+    case Return of
+        {ok, _, [{Consumer}]} ->
+            {ok, Consumer};
+        Elsewise ->
+            Elsewise
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -322,7 +366,13 @@ unregister_consumer(Connection, QueueName, ConsumerName) ->
 next_batch_info(Connection, QueueName, ConsumerName) ->
     Query = "SELECT pgq.next_batch_info($1::text, $2::text);",
     QueryArgs = [QueueName, ConsumerName],
-    _Return = equery(Connection, Query, QueryArgs).
+    Return = equery(Connection, Query, QueryArgs),
+    case Return of
+        {ok, _, [{BatchInfo}]} ->
+            {ok, BatchInfo};
+        Elsewise ->
+            Elsewise
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -332,7 +382,13 @@ next_batch_info(Connection, QueueName, ConsumerName) ->
 next_batch(Connection, QueueName, ConsumerName) ->
     Query = "SELECT pgq.next_batch($1::text, $2::text);",
     QueryArgs = [QueueName, ConsumerName],
-    _Return = equery(Connection, Query, QueryArgs).
+    Return = equery(Connection, Query, QueryArgs),
+    case Return of
+        {ok, _, [{BatchId}]} ->
+            {ok, BatchId};
+        Elsewise ->
+            Elsewise
+    end.
 
 %%--------------------------------------------------------------------
 %% https://pgq.github.io/extension/pgq/files/external-sql.html#pgq.next_batch_custom(5)
@@ -343,7 +399,13 @@ next_batch(Connection, QueueName, ConsumerName, Opts) ->
     MinInterval = maps:get(min_interval, Opts, null),
     Query = "SELECT pgq.next_batch($1::text, $2::text, $3::interval, $4::integer, $5::interval);",
     QueryArgs = [QueueName, ConsumerName, MinLag, MinCount, MinInterval],
-    _Return = equery(Connection, Query, QueryArgs).
+    Return = equery(Connection, Query, QueryArgs),
+    case Return of
+        {ok, _, [{Batch}]} ->
+            {ok, Batch};
+        Elsewise ->
+            Elsewise
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -353,7 +415,13 @@ next_batch(Connection, QueueName, ConsumerName, Opts) ->
 get_batch_event(Connection, BatchId) ->
     Query = "SELECT pgq.get_batch_event($1::bigint);",
     QueryArgs = [BatchId],
-    _Return = equery( Connection, Query, QueryArgs).
+    Return = equery( Connection, Query, QueryArgs),
+    case Return of
+        {ok, _, [{Batch}]} ->
+            {ok, Batch};
+        Elsewise ->
+            Elsewise
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -365,12 +433,18 @@ event_retry(Connection, BatchId, EventId, Timestamp)
   when is_tuple(Timestamp) ->
     Query = "SELECT pgq.event_retry($1::bigint, $2::text, $3::timestamptz);",
     QueryArgs = [BatchId, EventId, Timestamp],
-    _Return = equery(Connection, Query, QueryArgs);
+    Return = equery(Connection, Query, QueryArgs),
+    event_retry_return(Return);
 event_retry(Connection, BatchId, EventId, Seconds)
   when is_integer(Seconds) ->
     Query = "SELECT pgq.event_retry($1::bigint, $2::text, $3::integer);",
     QueryArgs = [BatchId, EventId, Seconds],
-    _Return = equery( Connection, Query, QueryArgs).
+    Return = equery(Connection, Query, QueryArgs),
+    event_retry_return(Return).
+
+% @hidden
+event_retry_return({ok, _, [{Value}]}) -> {ok, Value};
+event_retry_return(Elsewise) -> Elsewise.
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -380,7 +454,13 @@ event_retry(Connection, BatchId, EventId, Seconds)
 batch_retry(Connection, BatchId, RetrySeconds) ->
     Query = "SELECT pgq.batch_retry($1::bigint, $3::integer);",
     QueryArgs = [BatchId, RetrySeconds],
-    _Return = equery(Connection, Query, QueryArgs).
+    Return = equery(Connection, Query, QueryArgs),
+    case Return of
+        {ok, _, [{InsertedEvents}]} ->
+            {ok, InsertedEvents};
+        Elsewise ->
+            Elsewise
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -390,7 +470,13 @@ batch_retry(Connection, BatchId, RetrySeconds) ->
 finish_batch(Connection, BatchId) ->
     Query = "SELECT pgq.finish_batch($1::bigint);",
     QueryArgs = [BatchId],
-    _Return = equery(Connection, Query, QueryArgs).
+    Return = equery(Connection, Query, QueryArgs),
+    case Return of
+        {ok, _, [{Result}]} ->
+            {ok, Result};
+        Elsewise ->
+            Elsewise
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -480,7 +566,13 @@ get_consumer_info(Connection, QueueName, ConsumerName) ->
 get_batch_info(Connection, BatchId) ->
     Query = "SELECT pgq.get_batch_info($1::bigint);",
     QueryArgs = [BatchId],
-    _Return = equery(Connection, Query, QueryArgs).
+    Return = equery(Connection, Query, QueryArgs),
+    case Return of
+        {ok, _, [{Batch}]} ->
+            {ok, Batch};
+        Elsewise ->
+            Elsewise
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -531,20 +623,44 @@ event_retry_raw(Connection, QueueName, ConsumerName, EventId, Opts) ->
 %% https://pgq.github.io/extension/pgq/files/internal-sql.html#pgq.ticker(0)
 %% @end
 %%--------------------------------------------------------------------
+-spec ticker(Connection) -> Return when
+      Connection :: connection(),
+      Return     :: {ok, integer()}
+                  | {error, term()}.
+
 ticker(Connection) ->
     Query = "SELECT pgq.ticker();",
     QueryArgs = [],
-    _Return = equery(Connection, Query, QueryArgs).
+    Return = equery(Connection, Query, QueryArgs),
+    case Return of 
+        {ok, _, [{ProcessedQueues}]} ->
+            {ok, ProcessedQueues};
+        Elsewise ->
+            Elsewise
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc
 %% https://pgq.github.io/extension/pgq/files/internal-sql.html#pgq.ticker(1)
 %% @end
 %%--------------------------------------------------------------------
+-spec ticker(Connection, QueueName) -> Return when
+      Connection :: connection(),
+      QueueName  :: queue_name(),
+      Return     :: {ok, TickId}
+                  | {error, term()},
+      TickId     :: tick_id().
+
 ticker(Connection, QueueName) ->
     Query = "SELECT pgq.ticker($1::text);",
     QueryArgs = [QueueName],
-    _Return = equery(Connection, Query, QueryArgs).
+    Return = equery(Connection, Query, QueryArgs),
+    case Return of 
+        {ok, _, [{TickId}]} ->
+            {ok, TickId};
+        Elsewise ->
+            Elsewise
+    end.
 
 %%--------------------------------------------------------------------
 %% https://pgq.github.io/extension/pgq/files/internal-sql.html#pgq.ticker(3)
