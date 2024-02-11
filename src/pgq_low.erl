@@ -51,7 +51,7 @@
 %% @hidden
 %%--------------------------------------------------------------------
 equery(Connection, Query, QueryArgs) ->
-    QueryId = erlang:tunique_integer(),
+    QueryId = erlang:unique_integer(),
     Apply = [Connection, Query, QueryArgs],
     Return = apply(epgsql, equery, Apply),
     ?LOG_DEBUG("~p", [#{ query_id => QueryId 
