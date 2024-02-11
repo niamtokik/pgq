@@ -83,9 +83,15 @@ set_queue_config(Connection, QueueName, ParamName, ParamValue) ->
 %% @end
 %%--------------------------------------------------------------------
 insert_event(Connection, QueueName, EventType, EventData) ->
-    epgsql:equery( Connection
-                 , "SELECT pgq.insert_event($1::text, $2::text, $3::text);"
-                 , [QueueName, EventType, EventData]).
+    Return = epgsql:equery( Connection
+                          , "SELECT pgq.insert_event($1::text, $2::text, $3::text);"
+                          , [QueueName, EventType, EventData]),
+    case Return of
+        {ok, _, [{Events}]} ->
+            {ok, Events};
+        Elsewise ->
+            Elsewise
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -97,9 +103,17 @@ insert_event(Connection, QueueName, EventType, EventData, Extra) ->
     Extra2 = maps:get(Extra, extra2, null),
     Extra3 = maps:get(Extra, extra3, null),
     Extra4 = maps:get(Extra, extra4, null),
-    epgsql:equery( Connection
-                 , "SELECT pgq.insert_event($1::text, $2::text, $3::text, $4::text, $5::text, $6::text, $7::text);"
-                 , [QueueName, EventType, EventData, Extra1, Extra2, Extra3, Extra4]).
+    Return = epgsql:equery( Connection
+                          , "SELECT pgq.insert_event($1::text, $2::text, $3::text, "
+                            "$4::text, $5::text, $6::text, $7::text);"
+                          , [QueueName, EventType, EventData
+                            , Extra1, Extra2, Extra3, Extra4]),
+    case Return of
+        {ok, _, [{Events}]} ->
+            {ok, Events};
+        Elsewise ->
+            Elsewise
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -226,9 +240,15 @@ finish_batch(Connection, BatchId) ->
 %% @end
 %%--------------------------------------------------------------------
 get_queue_info(Connection) ->
-    epgsql:equery( Connection
-                 , "SELECT pgq.get_queue_info();"
-                 , []).
+    Return = epgsql:equery( Connection
+                          , "SELECT pgq.get_queue_info();"
+                          , []),
+    case Return of
+        {ok, _, Queues} ->
+            {ok, pgq_queue:to_record(Queues)};
+        Elsewise -> 
+            Elsewise
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -236,9 +256,15 @@ get_queue_info(Connection) ->
 %% @end
 %%--------------------------------------------------------------------
 get_queue_info(Connection, QueueName) ->
-    epgsql:equery( Connection
-                 , "SELECT pgq.get_queue_info($1::text);"
-                 , [QueueName]).
+    Return = epgsql:equery( Connection
+                          , "SELECT pgq.get_queue_info($1::text);"
+                          , [QueueName]),
+    case Return of
+        {ok, _, Queue} ->
+            {ok, pgq_queue:to_record(Queue)};
+        Elsewise -> 
+            Elsewise
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -246,9 +272,15 @@ get_queue_info(Connection, QueueName) ->
 %% @end
 %%--------------------------------------------------------------------
 get_consumer_info(Connection) ->
-    epgsql:equery( Connection
-                 , "SELECT pgq.get_consumer_info();"
-                 , []).
+    Return = epgsql:equery( Connection
+                          , "SELECT pgq.get_consumer_info();"
+                          , []),
+    case Return of
+        {ok, _, Consumers} ->
+            {ok, pgq_consumer:to_record(Consumers)};
+        Elsewise ->
+            Elsewise
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -256,9 +288,15 @@ get_consumer_info(Connection) ->
 %% @end
 %%--------------------------------------------------------------------
 get_consumer_info(Connection, QueueName) ->
-    epgsql:equery( Connection
-                 , "SELECT pgq.get_consumer_info($1::text);"
-                 , [QueueName]).
+    Return = epgsql:equery( Connection
+                          , "SELECT pgq.get_consumer_info($1::text);"
+                          , [QueueName]),
+    case Return of
+        {ok, _, Consumers} ->
+            {ok, pgq_consumer:to_record(Consumers)};
+        Elsewise ->
+            Elsewise
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -266,9 +304,15 @@ get_consumer_info(Connection, QueueName) ->
 %% @end
 %%--------------------------------------------------------------------
 get_consumer_info(Connection, QueueName, ConsumerName) ->
-    epgsql:equery( Connection
-                 , "SELECT pgq.get_consumer_info($1::text, $2::text);"
-                 , [QueueName, ConsumerName]).
+    Return = epgsql:equery( Connection
+                          , "SELECT pgq.get_consumer_info($1::text, $2::text);"
+                          , [QueueName, ConsumerName]),
+    case Return of
+        {ok, _, [Consumer]} ->
+            {ok, pgq_consumer:to_record(Consumer)};
+        Elsewise ->
+            Elsewise
+    end.    
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -279,7 +323,6 @@ version(Connection) ->
     epgsql:equery( Connection
                  , "SELECT version();"
                  , []).
-
 
 %%--------------------------------------------------------------------
 %% @doc
