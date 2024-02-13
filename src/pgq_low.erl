@@ -24,7 +24,7 @@
 -export([register_consumer/3, register_consumer_at/4, unregister_consumer/3]).
 -export([get_consumer_info/1, get_consumer_info/2, get_consumer_info/3]).
 % batch management
--export([next_batch_info/3, next_batch/3, next_batch/4, get_batch_event/2]).
+-export([next_batch_info/3, next_batch/3, next_batch/4, get_batch_events/2]).
 -export([batch_retry/3, finish_batch/2]).
 -export([get_batch_info/2, batch_event_sql/2, batch_event_tables/2]).
 % tick management
@@ -412,13 +412,13 @@ next_batch(Connection, QueueName, ConsumerName, Opts) ->
 %% https://pgq.github.io/extension/pgq/files/external-sql.html#pgq.get_batch_events(1)
 %% @end
 %%--------------------------------------------------------------------
-get_batch_event(Connection, BatchId) ->
-    Query = "SELECT pgq.get_batch_event($1::bigint);",
+get_batch_events(Connection, BatchId) ->
+    Query = "SELECT pgq.get_batch_events($1::bigint);",
     QueryArgs = [BatchId],
     Return = equery( Connection, Query, QueryArgs),
     case Return of
-        {ok, _, [{Batch}]} ->
-            {ok, Batch};
+        {ok, _, Events} ->
+            {ok, pgq_event:to_record(Events)};
         Elsewise ->
             Elsewise
     end.
